@@ -113,10 +113,18 @@ export function verifyJwt(token: string): JwtPayload {
         .update(signingInput)
         .digest()
     );
-    isValid = crypto.timingSafeEqual(
-      Buffer.from(signature),
-      Buffer.from(expectedSig)
-    );
+    // timingSafeEqual throws jika panjang buffer berbeda → catch → isValid = false
+    try {
+      const sigBuf = Buffer.from(signature);
+      const expBuf = Buffer.from(expectedSig);
+      if (sigBuf.length !== expBuf.length) {
+        isValid = false;
+      } else {
+        isValid = crypto.timingSafeEqual(sigBuf, expBuf);
+      }
+    } catch {
+      isValid = false;
+    }
   }
 
   if (!isValid) {
