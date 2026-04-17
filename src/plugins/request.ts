@@ -1,3 +1,4 @@
+import fp from 'fastify-plugin';
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { v4 as uuidv4 } from 'uuid';
 import { createLogger } from '@/lib/logger';
@@ -6,8 +7,9 @@ import { isDev } from '@/config/env';
 const log = createLogger('request');
 
 // ── Request ID + HTTP Logging Plugin ─────────────────────────
-export async function requestPlugin(app: FastifyInstance): Promise<void> {
-
+export const requestPlugin = fp(async function requestPlugin(
+  app: FastifyInstance,
+): Promise<void> {
   // ── Request ID ───────────────────────────────────────────────
   // Setiap request mendapat unique ID untuk tracing/debugging.
   // Cek header X-Request-Id dulu (untuk distributed tracing),
@@ -25,7 +27,7 @@ export async function requestPlugin(app: FastifyInstance): Promise<void> {
       void reply.header('X-Request-Id', requestId);
 
       done();
-    }
+    },
   );
 
   // ── HTTP Request/Response Logging ────────────────────────────
@@ -41,11 +43,7 @@ export async function requestPlugin(app: FastifyInstance): Promise<void> {
       const duration = reply.elapsedTime;
       const statusCode = reply.statusCode;
       const level =
-        statusCode >= 500
-          ? 'error'
-          : statusCode >= 400
-            ? 'warn'
-            : 'info';
+        statusCode >= 500 ? 'error' : statusCode >= 400 ? 'warn' : 'info';
 
       log[level](
         {
@@ -55,15 +53,13 @@ export async function requestPlugin(app: FastifyInstance): Promise<void> {
           statusCode,
           durationMs: Math.round(duration),
           userId: request.authUser?.id,
-          ip:
-            (request.headers['x-forwarded-for'] as string) ??
-            request.ip,
+          ip: (request.headers['x-forwarded-for'] as string) ?? request.ip,
         },
-        `${request.method} ${request.url} ${statusCode}`
+        `${request.method} ${request.url} ${statusCode}`,
       );
 
       done();
-    }
+    },
   );
 
   // ── Log Unhandled Errors ──────────────────────────────────────
@@ -74,7 +70,7 @@ export async function requestPlugin(app: FastifyInstance): Promise<void> {
         url: request.url,
         errName: error.name,
       },
-      'Hook onError triggered'
+      'Hook onError triggered',
     );
     done();
   });
@@ -85,10 +81,10 @@ export async function requestPlugin(app: FastifyInstance): Promise<void> {
       if (request.body && typeof request.body === 'object') {
         log.trace(
           { requestId: request.id, body: request.body },
-          'Request body (dev only)'
+          'Request body (dev only)',
         );
       }
       done();
     });
   }
-}
+});

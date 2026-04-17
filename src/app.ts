@@ -10,6 +10,7 @@ import { requestPlugin } from '@/plugins/request';
 
 // Routes
 import { healthRoutes } from '@/modules/health/health.routes';
+import { authRoutes } from '@/modules/auth/auth.routes';
 
 // ── App Factory ───────────────────────────────────────────────
 // Menggunakan factory pattern agar mudah di-test (buat instance baru per test).
@@ -82,8 +83,8 @@ export async function buildApp(): Promise<FastifyInstance> {
       // Health check juga di /v1/health
       await v1App.register(healthRoutes);
 
-      // Auth routes — akan ditambahkan di Phase 2
-      // await v1App.register(authRoutes, { prefix: '/auth' });
+      // Auth routes — Phase 2
+      await v1App.register(authRoutes, { prefix: '/auth' });
 
       // User routes — akan ditambahkan di Phase 7
       // await v1App.register(userRoutes, { prefix: '/users' });

@@ -13,12 +13,15 @@ Object.assign(process.env, {
   PORT: '3001',
   HOST: '0.0.0.0',
   API_VERSION: 'v1',
-  DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/user_multi_app_test',
+  DATABASE_URL:
+    'postgresql://postgres:postgres@localhost:5432/user_multi_app_test',
   DATABASE_POOL_MIN: '2',
   DATABASE_POOL_MAX: '10',
   JWT_ALGORITHM: 'HS256',
-  JWT_SECRET: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
-  ENCRYPTION_KEY: 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+  JWT_SECRET:
+    'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+  ENCRYPTION_KEY:
+    'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
   CORS_ALLOWED_ORIGINS: 'http://localhost:3001',
   RATE_LIMIT_MAX: '1000',
   RATE_LIMIT_WINDOW_MS: '60000',
@@ -48,7 +51,8 @@ Object.assign(process.env, {
   GITHUB_REDIRECT_URI: 'http://localhost:3001/v1/auth/oauth/github/callback',
   MICROSOFT_CLIENT_ID: '',
   MICROSOFT_CLIENT_SECRET: '',
-  MICROSOFT_REDIRECT_URI: 'http://localhost:3001/v1/auth/oauth/microsoft/callback',
+  MICROSOFT_REDIRECT_URI:
+    'http://localhost:3001/v1/auth/oauth/microsoft/callback',
 });
 
 // ── Mock Prisma (unit tests tidak butuh DB nyata) ─────────────
@@ -69,6 +73,8 @@ vi.mock('@/lib/prisma', () => {
     },
     user_profiles: {
       upsert: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
     },
     passwords: {
       findUnique: vi.fn(),
@@ -137,7 +143,16 @@ vi.mock('@/lib/prisma', () => {
     },
     roles: {
       findMany: vi.fn().mockResolvedValue([]),
+      findFirst: vi.fn(),
     },
+    user_app_memberships: {
+      findUnique: vi.fn(),
+      findMany: vi.fn().mockResolvedValue([]),
+      create: vi.fn(),
+      update: vi.fn(),
+      upsert: vi.fn(),
+    },
+    $transaction: vi.fn(),
     permissions: {
       findMany: vi.fn().mockResolvedValue([]),
     },

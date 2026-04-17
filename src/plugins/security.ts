@@ -1,3 +1,4 @@
+import fp from 'fastify-plugin';
 import type { FastifyInstance } from 'fastify';
 import helmet from '@fastify/helmet';
 import cors from '@fastify/cors';
@@ -8,7 +9,9 @@ import { createLogger } from '@/lib/logger';
 const log = createLogger('security');
 
 // ── Helmet — Security Headers ─────────────────────────────────
-export async function helmetPlugin(app: FastifyInstance): Promise<void> {
+export const helmetPlugin = fp(async function helmetPlugin(
+  app: FastifyInstance,
+): Promise<void> {
   await app.register(helmet, {
     // Content Security Policy
     contentSecurityPolicy: {
@@ -49,10 +52,12 @@ export async function helmetPlugin(app: FastifyInstance): Promise<void> {
   });
 
   log.info('Helmet security headers registered');
-}
+});
 
 // ── CORS ──────────────────────────────────────────────────────
-export async function corsPlugin(app: FastifyInstance): Promise<void> {
+export const corsPlugin = fp(async function corsPlugin(
+  app: FastifyInstance,
+): Promise<void> {
   await app.register(cors, {
     origin: (origin, callback) => {
       // Allow no-origin (server-to-server, Postman, curl)
@@ -65,7 +70,10 @@ export async function corsPlugin(app: FastifyInstance): Promise<void> {
         callback(null, true);
       } else {
         log.warn({ origin }, 'CORS rejected origin');
-        callback(new Error(`Origin ${origin} tidak diizinkan oleh CORS policy.`), false);
+        callback(
+          new Error(`Origin ${origin} tidak diizinkan oleh CORS policy.`),
+          false,
+        );
       }
     },
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
@@ -77,16 +85,18 @@ export async function corsPlugin(app: FastifyInstance): Promise<void> {
       'X-Forwarded-For',
     ],
     exposedHeaders: ['X-Request-Id', 'X-Rate-Limit-Remaining'],
-    credentials: true,   // Izinkan cookies & Authorization header
-    maxAge: 86400,       // Pre-flight cache 24 jam
+    credentials: true, // Izinkan cookies & Authorization header
+    maxAge: 86400, // Pre-flight cache 24 jam
     preflight: true,
   });
 
   log.info({ origins: corsOrigins }, 'CORS registered');
-}
+});
 
 // ── Rate Limiter ──────────────────────────────────────────────
-export async function rateLimitPlugin(app: FastifyInstance): Promise<void> {
+export const rateLimitPlugin = fp(async function rateLimitPlugin(
+  app: FastifyInstance,
+): Promise<void> {
   await app.register(rateLimit, {
     global: true, // Terapkan ke semua routes secara default
     max: env.RATE_LIMIT_MAX,
@@ -94,8 +104,8 @@ export async function rateLimitPlugin(app: FastifyInstance): Promise<void> {
     // Key: per IP (bisa di-override per route)
     keyGenerator: (request) => {
       return (
-        request.headers['x-forwarded-for'] as string ??
-        request.headers['x-real-ip'] as string ??
+        (request.headers['x-forwarded-for'] as string) ??
+        (request.headers['x-real-ip'] as string) ??
         request.ip
       );
     },
@@ -130,9 +140,9 @@ export async function rateLimitPlugin(app: FastifyInstance): Promise<void> {
       max: env.RATE_LIMIT_MAX,
       windowMs: env.RATE_LIMIT_WINDOW_MS,
     },
-    'Rate limiter registered'
+    'Rate limiter registered',
   );
-}
+});
 
 // ── Auth Rate Limit Config (untuk dipakai per-route) ─────────
 // Contoh pemakaian di route:
@@ -143,7 +153,10 @@ export async function rateLimitPlugin(app: FastifyInstance): Promise<void> {
 export const authRateLimitConfig = {
   max: env.RATE_LIMIT_AUTH_MAX,
   timeWindow: env.RATE_LIMIT_AUTH_WINDOW_MS,
-  keyGenerator: (request: { headers: Record<string, string | undefined>; ip: string }) => {
+  keyGenerator: (request: {
+    headers: Record<string, string | undefined>;
+    ip: string;
+  }) => {
     const ip =
       request.headers['x-forwarded-for'] ??
       request.headers['x-real-ip'] ??
