@@ -9,7 +9,9 @@ if (process.env.NODE_ENV !== 'test') {
 }
 
 const envSchema = z.object({
-  NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
+  NODE_ENV: z
+    .enum(['development', 'production', 'test'])
+    .default('development'),
   PORT: z.coerce.number().int().positive().default(3000),
   HOST: z.string().default('0.0.0.0'),
   API_VERSION: z.string().default('v1'),
@@ -38,7 +40,9 @@ const envSchema = z.object({
 
   SMTP_HOST: z.string().default('smtp.mailtrap.io'),
   SMTP_PORT: z.coerce.number().int().positive().default(587),
-  SMTP_SECURE: z.preprocess((v) => v === 'true' || v === true, z.boolean()).default(false),
+  SMTP_SECURE: z
+    .preprocess((v) => v === 'true' || v === true, z.boolean())
+    .default(false),
   SMTP_USER: z.string().default(''),
   SMTP_PASS: z.string().default(''),
   EMAIL_FROM: z.string().default('noreply@example.com'),
@@ -46,20 +50,30 @@ const envSchema = z.object({
 
   GOOGLE_CLIENT_ID: z.string().default(''),
   GOOGLE_CLIENT_SECRET: z.string().default(''),
-  GOOGLE_REDIRECT_URI: z.string().default('http://localhost:3000/v1/auth/oauth/google/callback'),
+  GOOGLE_REDIRECT_URI: z
+    .string()
+    .default('http://localhost:3000/v1/auth/oauth/google/callback'),
 
   GITHUB_CLIENT_ID: z.string().default(''),
   GITHUB_CLIENT_SECRET: z.string().default(''),
-  GITHUB_REDIRECT_URI: z.string().default('http://localhost:3000/v1/auth/oauth/github/callback'),
+  GITHUB_REDIRECT_URI: z
+    .string()
+    .default('http://localhost:3000/v1/auth/oauth/github/callback'),
 
   MICROSOFT_CLIENT_ID: z.string().default(''),
   MICROSOFT_CLIENT_SECRET: z.string().default(''),
-  MICROSOFT_REDIRECT_URI: z.string().default('http://localhost:3000/v1/auth/oauth/microsoft/callback'),
+  MICROSOFT_REDIRECT_URI: z
+    .string()
+    .default('http://localhost:3000/v1/auth/oauth/microsoft/callback'),
 
   APP_BASE_URL: z.string().url().default('http://localhost:3000'),
   FRONTEND_URL: z.string().url().default('http://localhost:5173'),
 
-  EMAIL_VERIFICATION_TTL_MINUTES: z.coerce.number().int().positive().default(1440),
+  EMAIL_VERIFICATION_TTL_MINUTES: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(1440),
   PASSWORD_RESET_TTL_MINUTES: z.coerce.number().int().positive().default(60),
   MAGIC_LINK_TTL_MINUTES: z.coerce.number().int().positive().default(15),
 
@@ -88,6 +102,8 @@ export const isDev = env.NODE_ENV === 'development';
 export const isProd = env.NODE_ENV === 'production';
 export const isTest = env.NODE_ENV === 'test';
 
-export const corsOrigins = env.CORS_ALLOWED_ORIGINS.split(',').map((o) => o.trim());
+export const corsOrigins = env.CORS_ALLOWED_ORIGINS.split(',').map((o) =>
+  o.trim(),
+);
 
 export type Env = z.infer<typeof envSchema>;
