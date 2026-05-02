@@ -122,6 +122,7 @@ export async function buildApp(): Promise<FastifyInstance> {
       },
       'App ready',
     );
+    console.log(app.printRoutes());
   });
 
   return app;
