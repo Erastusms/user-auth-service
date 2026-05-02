@@ -8,6 +8,7 @@ async function start(): Promise<void> {
   let app;
 
   try {
+    console.log('RUNNING FILE:', __filename);
     // Cek koneksi database sebelum start server
     logger.info('Checking database connection...');
     await prisma.$connect();
@@ -28,7 +29,7 @@ async function start(): Promise<void> {
         host: env.HOST,
         env: env.NODE_ENV,
       },
-      `Server running at http://${env.HOST}:${env.PORT}`
+      `Server running at http://${env.HOST}:${env.PORT}`,
     );
   } catch (err) {
     logger.fatal({ err }, 'Failed to start server');
@@ -60,7 +61,7 @@ async function start(): Promise<void> {
 
   // Handle shutdown signals
   process.on('SIGTERM', () => shutdown('SIGTERM')); // Docker stop
-  process.on('SIGINT', () => shutdown('SIGINT'));   // Ctrl+C
+  process.on('SIGINT', () => shutdown('SIGINT')); // Ctrl+C
   process.on('SIGUSR2', () => shutdown('SIGUSR2')); // Nodemon restart
 
   // ── Unhandled Rejections ──────────────────────────────────────
