@@ -25,8 +25,10 @@ export async function healthRoutes(app: FastifyInstance): Promise<void> {
       },
     },
     async (_request: FastifyRequest, reply: FastifyReply) => {
-      return reply.status(200).send({ status: 'ok', timestamp: new Date().toISOString() });
-    }
+      return reply
+        .status(200)
+        .send({ status: 'ok', timestamp: new Date().toISOString() });
+    },
   );
 
   // GET /health/full — cek semua services (untuk monitoring)
@@ -57,6 +59,6 @@ export async function healthRoutes(app: FastifyInstance): Promise<void> {
 
       const statusCode = overallStatus === 'ok' ? 200 : 503;
       return reply.status(statusCode).send(body);
-    }
+    },
   );
 }
