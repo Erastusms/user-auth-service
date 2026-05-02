@@ -20,7 +20,11 @@ import {
   fetchProviderUserInfo,
   encryptProviderToken,
 } from './oauth.providers';
-import { generateCodeVerifier, generateCodeChallenge, generateOAuthState } from '@/lib/pkce';
+import {
+  generateCodeVerifier,
+  generateCodeChallenge,
+  generateOAuthState,
+} from '@/lib/pkce';
 import type {
   OAuthProviderSlug,
   OAuthCallbackResult,
@@ -30,7 +34,12 @@ import type {
   IdentityRow,
   OAuthStateRow,
 } from './oauth.types';
-import type { OAuthInitQuery, OAuthCallbackQuery, OAuthLinkBody, OAuthUnlinkParam } from './oauth.schema';
+import type {
+  OAuthInitQuery,
+  OAuthCallbackQuery,
+  OAuthLinkBody,
+  OAuthUnlinkParam,
+} from './oauth.schema';
 
 const log = createLogger('oauth.service');
 
@@ -60,7 +69,7 @@ async function findActiveApp(clientId: string): Promise<AppRow> {
 
 async function loadRolesAndPermissions(
   userId: string,
-  appId: string
+  appId: string,
 ): Promise<{ roles: string[]; permissions: string[] }> {
   const userRoles = (await prisma.user_roles.findMany({
     where: {
@@ -77,11 +86,20 @@ async function loadRolesAndPermissions(
         },
       },
     },
-  })) as Array<{ roles: { slug: string; role_permissions: Array<{ permissions: { slug: string } }> } }>;
+  })) as Array<{
+    roles: {
+      slug: string;
+      role_permissions: Array<{ permissions: { slug: string } }>;
+    };
+  }>;
 
   const roles = [...new Set(userRoles.map((ur) => String(ur.roles.slug)))];
   const permissions = [
-    ...new Set(userRoles.flatMap((ur) => ur.roles.role_permissions.map((rp) => String(rp.permissions.slug)))),
+    ...new Set(
+      userRoles.flatMap((ur) =>
+        ur.roles.role_permissions.map((rp) => String(rp.permissions.slug)),
+      ),
+    ),
   ];
   return { roles, permissions };
 }
@@ -90,7 +108,7 @@ async function createSession(
   userId: string,
   appId: string,
   ttlSeconds: number,
-  meta: { ip: string; userAgent: string; provider: string }
+  meta: { ip: string; userAgent: string; provider: string },
 ): Promise<string> {
   const sessionId = uuidv4();
   await prisma.sessions.create({
@@ -114,7 +132,7 @@ async function createTokenPair(
   userId: string,
   sessionId: string,
   appId: string,
-  app: AppRow
+  app: AppRow,
 ): Promise<{ accessToken: string; refreshToken: string; expiresIn: number }> {
   const refreshTokenRaw = generateSecureToken(48);
   const tokenHash = hashToken(refreshTokenRaw);
@@ -133,7 +151,11 @@ async function createTokenPair(
   });
 
   const accessToken = signAccessToken({ sub: userId, sessionId, appId });
-  return { accessToken, refreshToken: refreshTokenRaw, expiresIn: app.access_token_ttl };
+  return {
+    accessToken,
+    refreshToken: refreshTokenRaw,
+    expiresIn: app.access_token_ttl,
+  };
 }
 
 function auditLog(data: {
@@ -157,7 +179,9 @@ function auditLog(data: {
         status: data.status ?? 'success',
         ip_address: data.ip ?? null,
         user_agent: data.userAgent ?? null,
-        metadata: data.metadata ?? {},
+        metadata: data.metadata
+          ? JSON.parse(JSON.stringify(data.metadata))
+          : null,
       },
     })
     .catch((e: unknown) => log.error({ err: e }, 'Failed to write audit log'));
@@ -170,10 +194,12 @@ function auditLog(data: {
 export async function initiateOAuth(
   provider: string,
   query: OAuthInitQuery,
-  meta: { ip: string; existingUserId?: string }
+  meta: { ip: string; existingUserId?: string },
 ): Promise<string> {
   if (!isValidProvider(provider)) {
-    throw new BadRequestError(`Provider '${provider}' tidak didukung. Pilih: google, github.`);
+    throw new BadRequestError(
+      `Provider '${provider}' tidak didukung. Pilih: google, github.`,
+    );
   }
 
   const app = await findActiveApp(query.appClientId);
@@ -184,10 +210,16 @@ export async function initiateOAuth(
 
   // Validasi credentials tersedia (skip di test env — credentials di-inject via env mock)
   if (env.NODE_ENV !== 'test') {
-    if (provider === 'google' && (!env.GOOGLE_CLIENT_ID || !env.GOOGLE_CLIENT_SECRET)) {
+    if (
+      provider === 'google' &&
+      (!env.GOOGLE_CLIENT_ID || !env.GOOGLE_CLIENT_SECRET)
+    ) {
       throw new BadRequestError('Google OAuth belum dikonfigurasi di server.');
     }
-    if (provider === 'github' && (!env.GITHUB_CLIENT_ID || !env.GITHUB_CLIENT_SECRET)) {
+    if (
+      provider === 'github' &&
+      (!env.GITHUB_CLIENT_ID || !env.GITHUB_CLIENT_SECRET)
+    ) {
       throw new BadRequestError('GitHub OAuth belum dikonfigurasi di server.');
     }
   }
@@ -213,7 +245,10 @@ export async function initiateOAuth(
   });
 
   const authUrl = buildAuthorizationUrl(provider, state, codeChallenge);
-  log.info({ provider, appId: app.id, hasExistingUser: !!meta.existingUserId }, 'OAuth initiated');
+  log.info(
+    { provider, appId: app.id, hasExistingUser: !!meta.existingUserId },
+    'OAuth initiated',
+  );
 
   return authUrl;
 }
@@ -225,7 +260,7 @@ export async function initiateOAuth(
 export async function handleOAuthCallback(
   provider: string,
   query: OAuthCallbackQuery,
-  meta: { ip: string; userAgent: string }
+  meta: { ip: string; userAgent: string },
 ): Promise<OAuthCallbackResult> {
   if (!isValidProvider(provider)) {
     throw new BadRequestError(`Provider '${provider}' tidak didukung.`);
@@ -233,11 +268,14 @@ export async function handleOAuthCallback(
 
   // ── Handle provider error (user deny, dll) ────────────────
   if (query.error) {
-    log.warn({ provider, error: query.error, desc: query.error_description }, 'OAuth provider error');
+    log.warn(
+      { provider, error: query.error, desc: query.error_description },
+      'OAuth provider error',
+    );
     throw new BadRequestError(
       query.error === 'access_denied'
         ? 'Akses ke akun ditolak oleh pengguna.'
-        : `OAuth error: ${query.error_description ?? query.error}`
+        : `OAuth error: ${query.error_description ?? query.error}`,
     );
   }
 
@@ -248,50 +286,66 @@ export async function handleOAuthCallback(
 
   if (!storedState) {
     log.warn({ state: query.state }, 'OAuth state not found — possible CSRF');
-    throw new BadRequestError('OAuth state tidak valid. Kemungkinan CSRF attack atau session expired.');
+    throw new BadRequestError(
+      'OAuth state tidak valid. Kemungkinan CSRF attack atau session expired.',
+    );
   }
 
   if (storedState.provider !== provider) {
-    throw new BadRequestError('Provider tidak cocok dengan state yang disimpan.');
+    throw new BadRequestError(
+      'Provider tidak cocok dengan state yang disimpan.',
+    );
   }
 
   if (new Date() > storedState.expires_at) {
     await prisma.oauth_states.delete({ where: { state: query.state } });
-    throw new BadRequestError('OAuth session expired. Silakan coba login lagi.');
+    throw new BadRequestError(
+      'OAuth session expired. Silakan coba login lagi.',
+    );
   }
 
   // Hapus state — single use
   await prisma.oauth_states.delete({ where: { state: query.state } });
 
   if (!storedState.code_verifier) {
-    throw new BadRequestError('Code verifier tidak ditemukan. Flow tidak valid.');
+    throw new BadRequestError(
+      'Code verifier tidak ditemukan. Flow tidak valid.',
+    );
   }
 
   // ── Token Exchange ────────────────────────────────────────
   const tokenResponse = await exchangeCodeForToken(
     provider as OAuthProviderSlug,
     query.code,
-    storedState.code_verifier
+    storedState.code_verifier,
   );
 
   // ── Fetch User Info dari Provider ─────────────────────────
   const providerUser = await fetchProviderUserInfo(
     provider as OAuthProviderSlug,
-    tokenResponse.access_token
+    tokenResponse.access_token,
   );
 
   log.info(
-    { provider, providerUserId: providerUser.providerUserId, email: providerUser.email },
-    'Provider user info fetched'
+    {
+      provider,
+      providerUserId: providerUser.providerUserId,
+      email: providerUser.email,
+    },
+    'Provider user info fetched',
   );
 
   // ── Get App Config ────────────────────────────────────────
   const app = (await prisma.apps.findUnique({
     where: { id: storedState.app_id },
     select: {
-      id: true, slug: true, client_id: true,
-      access_token_ttl: true, refresh_token_ttl: true,
-      is_active: true, deleted_at: true,
+      id: true,
+      slug: true,
+      client_id: true,
+      access_token_ttl: true,
+      refresh_token_ttl: true,
+      is_active: true,
+      deleted_at: true,
     },
   })) as AppRow | null;
 
@@ -305,7 +359,7 @@ export async function handleOAuthCallback(
       providerUser,
       tokenResponse,
       app,
-      meta
+      meta,
     );
   }
 
@@ -315,7 +369,7 @@ export async function handleOAuthCallback(
     providerUser,
     tokenResponse,
     app,
-    meta
+    meta,
   );
 }
 
@@ -325,7 +379,7 @@ async function handleLoginOrRegisterCallback(
   providerUser: Awaited<ReturnType<typeof fetchProviderUserInfo>>,
   tokenResponse: Awaited<ReturnType<typeof exchangeCodeForToken>>,
   app: AppRow,
-  meta: { ip: string; userAgent: string }
+  meta: { ip: string; userAgent: string },
 ): Promise<OAuthCallbackResult> {
   // Cek apakah identity sudah ada
   const existingIdentity = (await prisma.identities.findUnique({
@@ -349,31 +403,37 @@ async function handleLoginOrRegisterCallback(
     await syncProviderData(existingIdentity.id, providerUser, tokenResponse);
 
     // Update last login
-    void prisma.users.update({
-      where: { id: userId },
-      data: {
-        last_login_at: new Date(),
-        last_login_ip: meta.ip,
-        login_count: { increment: 1 },
-        // Sync avatar jika berubah
-        ...(providerUser.avatarUrl ? { avatar_url: providerUser.avatarUrl } : {}),
-      },
-    }).catch((_e: unknown) => undefined);
-
+    void prisma.users
+      .update({
+        where: { id: userId },
+        data: {
+          last_login_at: new Date(),
+          last_login_ip: meta.ip,
+          login_count: { increment: 1 },
+          // Sync avatar jika berubah
+          ...(providerUser.avatarUrl
+            ? { avatar_url: providerUser.avatarUrl }
+            : {}),
+        },
+      })
+      .catch((_e: unknown) => undefined);
   } else {
     // ── Identity belum ada — cek apakah email sudah terdaftar ─
     const existingUserByEmail = providerUser.email
-      ? (await prisma.users.findUnique({
+      ? ((await prisma.users.findUnique({
           where: { email: providerUser.email },
           select: { id: true, deleted_at: true },
-        })) as { id: string; deleted_at: Date | null } | null
+        })) as { id: string; deleted_at: Date | null } | null)
       : null;
 
     if (existingUserByEmail && !existingUserByEmail.deleted_at) {
       // Email sudah ada → link ke existing user
       userId = existingUserByEmail.id;
       await createIdentityRecord(userId, provider, providerUser, tokenResponse);
-      log.info({ userId, provider, email: providerUser.email }, 'OAuth linked to existing email user');
+      log.info(
+        { userId, provider, email: providerUser.email },
+        'OAuth linked to existing email user',
+      );
     } else {
       // User baru → auto-register
       userId = await autoRegisterOAuthUser(provider, providerUser, app);
@@ -387,7 +447,10 @@ async function handleLoginOrRegisterCallback(
     provider,
   });
   const { accessToken, refreshToken, expiresIn } = await createTokenPair(
-    userId, sessionId, app.id, app
+    userId,
+    sessionId,
+    app.id,
+    app,
   );
 
   // Load roles & permissions
@@ -397,13 +460,19 @@ async function handleLoginOrRegisterCallback(
   const user = (await prisma.users.findUnique({
     where: { id: userId },
     select: {
-      id: true, email: true, username: true,
-      display_name: true, avatar_url: true,
+      id: true,
+      email: true,
+      username: true,
+      display_name: true,
+      avatar_url: true,
       email_verified_at: true,
     },
   })) as {
-    id: string; email: string | null; username: string | null;
-    display_name: string | null; avatar_url: string | null;
+    id: string;
+    email: string | null;
+    username: string | null;
+    display_name: string | null;
+    avatar_url: string | null;
     email_verified_at: Date | null;
   };
 
@@ -448,7 +517,7 @@ async function handleLinkCallback(
   providerUser: Awaited<ReturnType<typeof fetchProviderUserInfo>>,
   tokenResponse: Awaited<ReturnType<typeof exchangeCodeForToken>>,
   app: AppRow,
-  meta: { ip: string; userAgent: string }
+  meta: { ip: string; userAgent: string },
 ): Promise<OAuthCallbackResult> {
   // Cek apakah provider ini sudah di-link ke user lain
   const alreadyLinked = (await prisma.identities.findUnique({
@@ -463,36 +532,61 @@ async function handleLinkCallback(
 
   if (alreadyLinked && alreadyLinked.user_id !== existingUserId) {
     throw new ConflictError(
-      `Akun ${provider} ini sudah terhubung ke akun lain. Silakan gunakan akun ${provider} yang berbeda.`
+      `Akun ${provider} ini sudah terhubung ke akun lain. Silakan gunakan akun ${provider} yang berbeda.`,
     );
   }
 
   if (alreadyLinked && alreadyLinked.user_id === existingUserId) {
-    throw new ConflictError(`Akun ${provider} ini sudah terhubung ke akun kamu.`);
+    throw new ConflictError(
+      `Akun ${provider} ini sudah terhubung ke akun kamu.`,
+    );
   }
 
   // Link provider ke existing user
-  await createIdentityRecord(existingUserId, provider, providerUser, tokenResponse);
+  await createIdentityRecord(
+    existingUserId,
+    provider,
+    providerUser,
+    tokenResponse,
+  );
 
   // Buat session baru
-  const sessionId = await createSession(existingUserId, app.id, app.refresh_token_ttl, {
-    ...meta,
-    provider,
-  });
-  const { accessToken, refreshToken, expiresIn } = await createTokenPair(
-    existingUserId, sessionId, app.id, app
+  const sessionId = await createSession(
+    existingUserId,
+    app.id,
+    app.refresh_token_ttl,
+    {
+      ...meta,
+      provider,
+    },
   );
-  const { roles, permissions } = await loadRolesAndPermissions(existingUserId, app.id);
+  const { accessToken, refreshToken, expiresIn } = await createTokenPair(
+    existingUserId,
+    sessionId,
+    app.id,
+    app,
+  );
+  const { roles, permissions } = await loadRolesAndPermissions(
+    existingUserId,
+    app.id,
+  );
 
   const user = (await prisma.users.findUnique({
     where: { id: existingUserId },
     select: {
-      id: true, email: true, username: true,
-      display_name: true, avatar_url: true, email_verified_at: true,
+      id: true,
+      email: true,
+      username: true,
+      display_name: true,
+      avatar_url: true,
+      email_verified_at: true,
     },
   })) as {
-    id: string; email: string | null; username: string | null;
-    display_name: string | null; avatar_url: string | null;
+    id: string;
+    email: string | null;
+    username: string | null;
+    display_name: string | null;
+    avatar_url: string | null;
     email_verified_at: Date | null;
   };
 
@@ -534,7 +628,7 @@ async function handleLinkCallback(
 async function autoRegisterOAuthUser(
   provider: OAuthProviderSlug,
   providerUser: Awaited<ReturnType<typeof fetchProviderUserInfo>>,
-  app: AppRow
+  app: AppRow,
 ): Promise<string> {
   const userId = uuidv4();
   const displayName = providerUser.displayName;
@@ -548,7 +642,7 @@ async function autoRegisterOAuthUser(
     select: { id: true },
   })) as { id: string } | null;
 
-  await prisma.$transaction(async (tx: typeof prisma) => {
+  await prisma.$transaction(async (tx) => {
     // 1. Buat user
     await tx.users.create({
       data: {
@@ -558,14 +652,19 @@ async function autoRegisterOAuthUser(
         avatar_url: providerUser.avatarUrl,
         is_active: true,
         // Email verified jika provider memverifikasinya
-        email_verified_at: providerUser.emailVerified && providerUser.email ? new Date() : null,
+        email_verified_at:
+          providerUser.emailVerified && providerUser.email ? new Date() : null,
         locale: providerUser.locale ?? 'id',
       },
     });
 
     // 2. Buat password record (random, tidak diketahui user)
     await tx.passwords.create({
-      data: { id: uuidv4(), user_id: userId, password_hash: randomPasswordHash },
+      data: {
+        id: uuidv4(),
+        user_id: userId,
+        password_hash: randomPasswordHash,
+      },
     });
 
     // 3. Profile
@@ -597,7 +696,7 @@ async function autoRegisterOAuthUser(
         provider,
         provider_user_id: providerUser.providerUserId,
         provider_email: providerUser.email,
-        provider_data: providerUser.rawData,
+        provider_data: providerUser.rawData as never,
         is_primary: true,
       },
     });
@@ -615,7 +714,10 @@ async function autoRegisterOAuthUser(
     }
   });
 
-  log.info({ userId, provider, email: providerUser.email }, 'Auto-registered OAuth user');
+  log.info(
+    { userId, provider, email: providerUser.email },
+    'Auto-registered OAuth user',
+  );
   return userId;
 }
 
@@ -624,7 +726,7 @@ async function createIdentityRecord(
   userId: string,
   provider: OAuthProviderSlug,
   providerUser: Awaited<ReturnType<typeof fetchProviderUserInfo>>,
-  tokenResponse: Awaited<ReturnType<typeof exchangeCodeForToken>>
+  tokenResponse: Awaited<ReturnType<typeof exchangeCodeForToken>>,
 ): Promise<void> {
   await prisma.identities.create({
     data: {
@@ -640,7 +742,7 @@ async function createIdentityRecord(
       provider_token_expires_at: tokenResponse.expires_in
         ? new Date(Date.now() + tokenResponse.expires_in * 1000)
         : null,
-      provider_data: providerUser.rawData,
+      provider_data: providerUser.rawData as never,
       is_primary: false,
     },
   });
@@ -650,7 +752,7 @@ async function createIdentityRecord(
 async function syncProviderData(
   identityId: string,
   providerUser: Awaited<ReturnType<typeof fetchProviderUserInfo>>,
-  tokenResponse: Awaited<ReturnType<typeof exchangeCodeForToken>>
+  tokenResponse: Awaited<ReturnType<typeof exchangeCodeForToken>>,
 ): Promise<void> {
   await prisma.identities.update({
     where: { id: identityId },
@@ -663,7 +765,7 @@ async function syncProviderData(
       provider_token_expires_at: tokenResponse.expires_in
         ? new Date(Date.now() + tokenResponse.expires_in * 1000)
         : undefined,
-      provider_data: providerUser.rawData,
+      provider_data: providerUser.rawData as never,
     },
   });
 }
@@ -676,7 +778,7 @@ export async function initiateLinkOAuth(
   body: OAuthLinkBody,
   userId: string,
   appClientId: string,
-  meta: { ip: string }
+  meta: { ip: string },
 ): Promise<OAuthLinkInitResult> {
   const provider = body.provider;
 
@@ -693,7 +795,7 @@ export async function initiateLinkOAuth(
   const authUrl = await initiateOAuth(
     provider,
     { appClientId, redirectUri: body.redirectUri },
-    { ip: meta.ip, existingUserId: userId }
+    { ip: meta.ip, existingUserId: userId },
   );
 
   return {
@@ -709,7 +811,7 @@ export async function initiateLinkOAuth(
 export async function unlinkOAuth(
   param: OAuthUnlinkParam,
   userId: string,
-  meta: { ip: string; userAgent: string }
+  meta: { ip: string; userAgent: string },
 ): Promise<OAuthUnlinkResult> {
   const provider = param.provider;
 
@@ -726,7 +828,10 @@ export async function unlinkOAuth(
   // Cek total login methods — tidak boleh hapus satu-satunya
   const [identityCount, passwordRecord] = await Promise.all([
     prisma.identities.count({ where: { user_id: userId } }) as Promise<number>,
-    prisma.passwords.findUnique({ where: { user_id: userId }, select: { id: true } }) as Promise<{ id: string } | null>,
+    prisma.passwords.findUnique({
+      where: { user_id: userId },
+      select: { id: true },
+    }) as Promise<{ id: string } | null>,
   ]);
 
   const hasPassword = !!passwordRecord;
@@ -735,8 +840,8 @@ export async function unlinkOAuth(
   if (totalMethods <= 1) {
     throw new ForbiddenError(
       'Tidak bisa menghapus satu-satunya metode login. ' +
-      'Tambahkan password atau hubungkan provider lain terlebih dahulu.',
-      'LAST_LOGIN_METHOD' as never
+        'Tambahkan password atau hubungkan provider lain terlebih dahulu.',
+      'LAST_LOGIN_METHOD' as never,
     );
   }
 
@@ -773,13 +878,17 @@ export async function unlinkOAuth(
 // ════════════════════════════════════════════════════════════════
 
 export async function getLinkedProviders(
-  userId: string
+  userId: string,
 ): Promise<{ provider: string; email: string | null; linkedAt: Date }[]> {
   const identities = (await prisma.identities.findMany({
     where: { user_id: userId },
     select: { provider: true, provider_email: true, created_at: true },
     orderBy: { created_at: 'asc' },
-  })) as Array<{ provider: string; provider_email: string | null; created_at: Date }>;
+  })) as Array<{
+    provider: string;
+    provider_email: string | null;
+    created_at: Date;
+  }>;
 
   return identities.map((i) => ({
     provider: i.provider,

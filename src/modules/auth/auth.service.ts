@@ -212,7 +212,9 @@ function auditLog(data: {
         user_agent: data.userAgent ?? null,
         resource_type: data.resourceType ?? null,
         resource_id: data.resourceId ?? null,
-        metadata: data.metadata ?? {},
+        metadata: data.metadata
+          ? JSON.parse(JSON.stringify(data.metadata))
+          : null,
       },
     })
     .catch((e: unknown) => log.error({ err: e }, 'Failed to write audit log'));
@@ -271,7 +273,7 @@ export async function register(
   })) as { id: string } | null;
 
   // ── Prisma Transaction ────────────────────────────────────────
-  await prisma.$transaction(async (tx: typeof prisma) => {
+  await prisma.$transaction(async (tx) => {
     // 1. Buat user
     await tx.users.create({
       data: {

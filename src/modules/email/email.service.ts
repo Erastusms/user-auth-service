@@ -1,4 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
+import type { token_type } from '@prisma/client';
 import prisma from '@/lib/prisma';
 import {
   hashPassword,
@@ -6,10 +7,7 @@ import {
   hashToken,
   generateUrlSafeToken,
 } from '@/lib/crypto';
-import {
-  sendVerificationEmail,
-  sendPasswordResetEmail,
-} from '@/lib/email';
+import { sendVerificationEmail, sendPasswordResetEmail } from '@/lib/email';
 import { createLogger } from '@/lib/logger';
 import { env } from '@/config/env';
 import {
@@ -72,7 +70,7 @@ function auditLog(data: {
         user_agent: data.userAgent ?? null,
         resource_type: 'user',
         resource_id: data.userId ?? null,
-        metadata: data.metadata ?? {},
+        metadata: (data.metadata ?? {}) as any,
       },
     })
     .catch((e: unknown) => log.error({ err: e }, 'Failed to write audit log'));
@@ -99,10 +97,10 @@ async function findActiveUserByEmail(email: string): Promise<UserRow | null> {
 // ── Create & store verification token ────────────────────────
 async function createVerificationToken(
   userId: string,
-  type: string,
+  type: token_type,
   target: string,
   ttlMinutes: number,
-  ip?: string
+  ip?: string,
 ): Promise<string> {
   // Invalidate existing unused tokens of same type for same user
   await prisma.verification_tokens.updateMany({
@@ -136,7 +134,7 @@ async function createVerificationToken(
 // ── Consume & validate a verification token ───────────────────
 async function consumeToken(
   tokenRaw: string,
-  type: string
+  type: string,
 ): Promise<VerificationTokenRow> {
   const tokenHash = hashToken(tokenRaw);
 
@@ -166,7 +164,9 @@ async function consumeToken(
   }
 
   if (new Date() > stored.expires_at) {
-    throw new BadRequestError('Token sudah kadaluarsa. Silakan minta token baru.');
+    throw new BadRequestError(
+      'Token sudah kadaluarsa. Silakan minta token baru.',
+    );
   }
 
   // Mark as used
@@ -184,13 +184,16 @@ async function consumeToken(
 
 export async function sendEmailVerification(
   dto: SendVerificationDto,
-  meta: { ip?: string; userAgent?: string }
+  meta: { ip?: string; userAgent?: string },
 ): Promise<SendVerificationResult> {
   const user = await findActiveUserByEmail(dto.email);
 
   // Tidak bocorkan apakah email terdaftar atau tidak
   if (!user || user.deleted_at) {
-    log.info({ email: dto.email }, 'sendEmailVerification: email not found, silently ignored');
+    log.info(
+      { email: dto.email },
+      'sendEmailVerification: email not found, silently ignored',
+    );
     return { message: 'Jika email terdaftar, link verifikasi telah dikirim.' };
   }
 
@@ -198,7 +201,8 @@ export async function sendEmailVerification(
     throw new ConflictError('Email ini sudah terverifikasi.');
   }
 
-  if (user.is_banned) throw new AccountBannedError(user.ban_reason ?? undefined);
+  if (user.is_banned)
+    throw new AccountBannedError(user.ban_reason ?? undefined);
   if (!user.is_active) throw new AccountInactiveError();
 
   const tokenRaw = await createVerificationToken(
@@ -206,10 +210,11 @@ export async function sendEmailVerification(
     TOKEN_TYPES.EMAIL_VERIFICATION,
     dto.email,
     env.EMAIL_VERIFICATION_TTL_MINUTES,
-    meta.ip
+    meta.ip,
   );
 
-  const displayName = user.display_name ?? user.username ?? dto.email.split('@')[0];
+  const displayName =
+    user.display_name ?? user.username ?? dto.email.split('@')[0];
 
   // Fire-and-forget — jangan block response menunggu email terkirim
   setImmediate(() => {
@@ -226,7 +231,9 @@ export async function sendEmailVerification(
 
   log.info({ userId: user.id, email: dto.email }, 'Verification email queued');
 
-  return { message: 'Email verifikasi telah dikirim. Cek inbox dan folder spam kamu.' };
+  return {
+    message: 'Email verifikasi telah dikirim. Cek inbox dan folder spam kamu.',
+  };
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -235,9 +242,12 @@ export async function sendEmailVerification(
 
 export async function verifyEmail(
   dto: VerifyEmailDto,
-  meta: { ip?: string; userAgent?: string }
+  meta: { ip?: string; userAgent?: string },
 ): Promise<VerifyEmailResult> {
-  const tokenRecord = await consumeToken(dto.token, TOKEN_TYPES.EMAIL_VERIFICATION);
+  const tokenRecord = await consumeToken(
+    dto.token,
+    TOKEN_TYPES.EMAIL_VERIFICATION,
+  );
 
   // Cek user masih ada & aktif
   const user = (await prisma.users.findUnique({
@@ -249,7 +259,13 @@ export async function verifyEmail(
       deleted_at: true,
       email_verified_at: true,
     },
-  })) as { id: string; email: string | null; is_active: boolean; deleted_at: Date | null; email_verified_at: Date | null } | null;
+  })) as {
+    id: string;
+    email: string | null;
+    is_active: boolean;
+    deleted_at: Date | null;
+    email_verified_at: Date | null;
+  } | null;
 
   if (!user || user.deleted_at) {
     throw new NotFoundError('User');
@@ -299,7 +315,7 @@ export async function verifyEmail(
 
 export async function forgotPassword(
   dto: ForgotPasswordDto,
-  meta: { ip?: string; userAgent?: string }
+  meta: { ip?: string; userAgent?: string },
 ): Promise<ForgotPasswordResult> {
   // Validasi appClientId — app harus ada & aktif
   const app = (await prisma.apps.findUnique({
@@ -321,7 +337,10 @@ export async function forgotPassword(
 
   if (!user || user.deleted_at || user.is_banned || !user.is_active) {
     // Tidak bocorkan info — tetap return generic message
-    log.info({ email: dto.email }, 'forgotPassword: user not found or inactive, silently ignored');
+    log.info(
+      { email: dto.email },
+      'forgotPassword: user not found or inactive, silently ignored',
+    );
     return genericResponse;
   }
 
@@ -330,10 +349,11 @@ export async function forgotPassword(
     TOKEN_TYPES.PASSWORD_RESET,
     dto.email,
     env.PASSWORD_RESET_TTL_MINUTES,
-    meta.ip
+    meta.ip,
   );
 
-  const displayName = user.display_name ?? user.username ?? dto.email.split('@')[0];
+  const displayName =
+    user.display_name ?? user.username ?? dto.email.split('@')[0];
 
   setImmediate(() => {
     void sendPasswordResetEmail(dto.email, displayName, tokenRaw);
@@ -348,7 +368,10 @@ export async function forgotPassword(
     metadata: { email: dto.email },
   });
 
-  log.info({ userId: user.id, email: dto.email }, 'Password reset email queued');
+  log.info(
+    { userId: user.id, email: dto.email },
+    'Password reset email queued',
+  );
 
   return genericResponse;
 }
@@ -359,14 +382,19 @@ export async function forgotPassword(
 
 export async function resetPassword(
   dto: ResetPasswordDto,
-  meta: { ip?: string; userAgent?: string }
+  meta: { ip?: string; userAgent?: string },
 ): Promise<ResetPasswordResult> {
   const tokenRecord = await consumeToken(dto.token, TOKEN_TYPES.PASSWORD_RESET);
 
   const user = (await prisma.users.findUnique({
     where: { id: tokenRecord.user_id },
     select: { id: true, email: true, is_active: true, deleted_at: true },
-  })) as { id: string; email: string | null; is_active: boolean; deleted_at: Date | null } | null;
+  })) as {
+    id: string;
+    email: string | null;
+    is_active: boolean;
+    deleted_at: Date | null;
+  } | null;
 
   if (!user || user.deleted_at) throw new NotFoundError('User');
   if (!user.is_active) throw new AccountInactiveError();
@@ -379,10 +407,13 @@ export async function resetPassword(
 
   if (passwordRecord) {
     // Cek current password
-    const matchesCurrent = await verifyPassword(dto.newPassword, passwordRecord.password_hash);
+    const matchesCurrent = await verifyPassword(
+      dto.newPassword,
+      passwordRecord.password_hash,
+    );
     if (matchesCurrent) {
       throw new BadRequestError(
-        'Password baru tidak boleh sama dengan password saat ini.'
+        'Password baru tidak boleh sama dengan password saat ini.',
       );
     }
 
@@ -396,7 +427,7 @@ export async function resetPassword(
       const matchesOld = await verifyPassword(dto.newPassword, oldHash);
       if (matchesOld) {
         throw new BadRequestError(
-          `Password baru tidak boleh sama dengan ${PASSWORD_POLICY.HISTORY_COUNT} password terakhir.`
+          `Password baru tidak boleh sama dengan ${PASSWORD_POLICY.HISTORY_COUNT} password terakhir.`,
         );
       }
     }
@@ -415,7 +446,7 @@ export async function resetPassword(
       data: {
         password_hash: newHash,
         previous_hashes: [...history, passwordRecord.password_hash].slice(
-          -PASSWORD_POLICY.HISTORY_COUNT
+          -PASSWORD_POLICY.HISTORY_COUNT,
         ),
         must_change: false,
         changed_at: new Date(),
@@ -466,7 +497,7 @@ export async function resetPassword(
 
   log.info(
     { userId: user.id, revokedSessions: sessionIds.length },
-    'Password reset completed'
+    'Password reset completed',
   );
 
   return {
@@ -483,7 +514,7 @@ export async function changePassword(
   dto: ChangePasswordDto,
   userId: string,
   currentSessionId: string,
-  meta: { ip?: string; userAgent?: string }
+  meta: { ip?: string; userAgent?: string },
 ): Promise<ChangePasswordResult> {
   // Ambil password record
   const passwordRecord = (await prisma.passwords.findUnique({
@@ -494,14 +525,14 @@ export async function changePassword(
   if (!passwordRecord) {
     // User login via OAuth dan belum punya password
     throw new BadRequestError(
-      'Akun kamu belum memiliki password. Gunakan fitur "Set Password" untuk membuat password.'
+      'Akun kamu belum memiliki password. Gunakan fitur "Set Password" untuk membuat password.',
     );
   }
 
   // Verifikasi password saat ini
   const isCurrentValid = await verifyPassword(
     dto.currentPassword,
-    passwordRecord.password_hash
+    passwordRecord.password_hash,
   );
 
   if (!isCurrentValid) {
@@ -526,7 +557,7 @@ export async function changePassword(
     const matchesOld = await verifyPassword(dto.newPassword, oldHash);
     if (matchesOld) {
       throw new BadRequestError(
-        `Password baru tidak boleh sama dengan ${PASSWORD_POLICY.HISTORY_COUNT} password terakhir.`
+        `Password baru tidak boleh sama dengan ${PASSWORD_POLICY.HISTORY_COUNT} password terakhir.`,
       );
     }
   }
@@ -538,7 +569,7 @@ export async function changePassword(
     data: {
       password_hash: newHash,
       previous_hashes: [...history, passwordRecord.password_hash].slice(
-        -PASSWORD_POLICY.HISTORY_COUNT
+        -PASSWORD_POLICY.HISTORY_COUNT,
       ),
       must_change: false,
       changed_at: new Date(),
@@ -554,7 +585,7 @@ export async function changePassword(
         id: { not: currentSessionId },
       },
       select: { id: true },
-    })) as Array<{ id: true }>;
+    })) as Array<{ id: string }>;
 
     const otherSessionIds = otherSessions.map((s) => String(s.id));
 
@@ -583,7 +614,10 @@ export async function changePassword(
     metadata: { revokeOtherSessions: dto.revokeOtherSessions },
   });
 
-  log.info({ userId, revokeOtherSessions: dto.revokeOtherSessions }, 'Password changed');
+  log.info(
+    { userId, revokeOtherSessions: dto.revokeOtherSessions },
+    'Password changed',
+  );
 
   return { message: 'Password berhasil diubah.' };
 }
