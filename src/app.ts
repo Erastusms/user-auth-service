@@ -67,7 +67,9 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(corsPlugin);
 
   // 4. Rate Limiter — global
-  await app.register(rateLimitPlugin);
+  if (env.NODE_ENV === 'production') {
+    await app.register(rateLimitPlugin);
+  }
 
   // 5. Request ID + HTTP logging hooks
   await app.register(requestPlugin);
@@ -106,7 +108,7 @@ export async function buildApp(): Promise<FastifyInstance> {
       // Permission routes — akan ditambahkan di Phase 8
       // await v1App.register(permissionRoutes, { prefix: '/permissions' });
     },
-    { prefix: `/${env.API_VERSION}` }
+    { prefix: `/${env.API_VERSION}` },
   );
 
   // ── Ready Log ─────────────────────────────────────────────────
@@ -118,7 +120,7 @@ export async function buildApp(): Promise<FastifyInstance> {
         port: env.PORT,
         rateLimitMax: env.RATE_LIMIT_MAX,
       },
-      'App ready'
+      'App ready',
     );
   });
 
