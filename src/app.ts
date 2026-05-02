@@ -1,3 +1,4 @@
+import 'module-alias/register';
 import Fastify, { type FastifyInstance } from 'fastify';
 import sensible from '@fastify/sensible';
 import { env, isDev } from '@/config/env';
