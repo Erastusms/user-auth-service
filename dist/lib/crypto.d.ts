@@ -1,0 +1,13 @@
+export declare function hashToken(token: string): string;
+export declare function generateSecureToken(bytes?: number): string;
+export declare function generateUrlSafeToken(bytes?: number): string;
+export declare function generateBackupCode(): string;
+export declare function generateBackupCodes(count: number): string[];
+export declare function hashPassword(password: string): Promise<string>;
+export declare function verifyPassword(password: string, hash: string): Promise<boolean>;
+export declare function encrypt(plaintext: string): string;
+export declare function decrypt(ciphertext: string): string;
+export declare function timingSafeEqual(a: string, b: string): boolean;
+export declare function generateClientId(): string;
+export declare function generateClientSecret(): string;
+export declare function generateMfaToken(): string;

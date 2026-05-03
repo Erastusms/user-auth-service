@@ -4,7 +4,8 @@ node_modules/
 .pnp.js
 
 # Build output
-dist/
+# dist/ sengaja TIDAK di-ignore agar Vercel build step bisa include hasilnya
+# Jika tidak ingin commit dist/, pastikan vercel.json pakai buildCommand
 build/
 
 # Environment
