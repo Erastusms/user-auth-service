@@ -50,6 +50,16 @@ export async function loginHandler(
   return successResponse(reply, result);
 }
 
+// ── GET /auth/me ──────────────────────────────────────────────
+export async function meHandler(
+  request: FastifyRequest,
+  reply: FastifyReply,
+): Promise<FastifyReply> {
+  const { id: userId, sessionId } = request.authUser!;
+  const result = await authService.getMe(userId, sessionId);
+  return successResponse(reply, result);
+}
+
 // ── POST /auth/logout ─────────────────────────────────────────
 export async function logoutHandler(
   request: FastifyRequest<{ Body: LogoutDto }>,

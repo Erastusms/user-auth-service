@@ -92,6 +92,7 @@ async function buildApp() {
     }, { prefix: `/${env_1.env.API_VERSION}` });
     // ── Ready Log ─────────────────────────────────────────────────
     app.addHook('onReady', () => {
+        console.log(app.printRoutes());
         logger_1.default.info({
             env: env_1.env.NODE_ENV,
             version: env_1.env.API_VERSION,

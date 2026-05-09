@@ -38,6 +38,11 @@ async function authRoutes(app) {
         preHandler: [(0, validate_1.validate)({ body: auth_schema_1.LoginSchema })],
         handler: auth_controller_1.loginHandler,
     });
+    // ── GET /auth/me ──────────────────────────────────────────────
+    app.get('/me', {
+        preHandler: [authenticate_1.authenticate],
+        handler: auth_controller_1.meHandler,
+    });
     // ── POST /auth/logout ─────────────────────────────────────
     app.post('/logout', {
         preHandler: [authenticate_1.authenticate, (0, validate_1.validate)({ body: auth_schema_1.LogoutSchema })],

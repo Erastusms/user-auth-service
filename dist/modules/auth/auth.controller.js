@@ -35,6 +35,7 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.registerHandler = registerHandler;
 exports.loginHandler = loginHandler;
+exports.meHandler = meHandler;
 exports.logoutHandler = logoutHandler;
 exports.refreshHandler = refreshHandler;
 exports.revokeAllHandler = revokeAllHandler;
@@ -64,6 +65,12 @@ async function loginHandler(request, reply) {
         deviceType: request.body.deviceType,
     };
     const result = await authService.login(request.body, meta);
+    return (0, response_1.successResponse)(reply, result);
+}
+// ── GET /auth/me ──────────────────────────────────────────────
+async function meHandler(request, reply) {
+    const { id: userId, sessionId } = request.authUser;
+    const result = await authService.getMe(userId, sessionId);
     return (0, response_1.successResponse)(reply, result);
 }
 // ── POST /auth/logout ─────────────────────────────────────────

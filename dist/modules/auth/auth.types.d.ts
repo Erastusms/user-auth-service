@@ -42,6 +42,26 @@ export interface LoginResult {
 export interface RefreshResult {
     tokens: TokenPair;
 }
+export interface MeResult {
+    user: {
+        id: string;
+        email: string | null;
+        username: string | null;
+        displayName: string | null;
+        avatarUrl: string | null;
+        emailVerified: boolean;
+        roles: string[];
+        permissions: string[];
+    };
+    session: {
+        id: string;
+        deviceName: string;
+        deviceType: string;
+        ipAddress: string;
+        createdAt: Date;
+        lastActiveAt: Date | null;
+    };
+}
 export interface RevokeAllResult {
     revokedCount: number;
     message: string;

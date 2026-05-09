@@ -6,6 +6,7 @@ export declare function registerHandler(request: FastifyRequest<{
 export declare function loginHandler(request: FastifyRequest<{
     Body: LoginDto;
 }>, reply: FastifyReply): Promise<FastifyReply>;
+export declare function meHandler(request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply>;
 export declare function logoutHandler(request: FastifyRequest<{
     Body: LogoutDto;
 }>, reply: FastifyReply): Promise<FastifyReply>;

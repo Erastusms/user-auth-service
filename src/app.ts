@@ -114,6 +114,7 @@ export async function buildApp(): Promise<FastifyInstance> {
 
   // ── Ready Log ─────────────────────────────────────────────────
   app.addHook('onReady', () => {
+    // console.log(app.printRoutes());
     logger.info(
       {
         env: env.NODE_ENV,

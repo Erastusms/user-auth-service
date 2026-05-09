@@ -7,6 +7,7 @@ exports.register = register;
 exports.login = login;
 exports.logout = logout;
 exports.refresh = refresh;
+exports.getMe = getMe;
 exports.revokeAll = revokeAll;
 const uuid_1 = require("uuid");
 const prisma_1 = __importDefault(require("../../lib/prisma"));
@@ -550,6 +551,86 @@ async function refresh(dto) {
             refreshToken: refreshTokenRaw,
             tokenType: 'Bearer',
             expiresIn: app.access_token_ttl,
+        },
+    };
+}
+// ── Get Me ────────────────────────────────────────────────────
+async function getMe(userId, sessionId) {
+    // Ambil user
+    const user = (await prisma_1.default.users.findUnique({
+        where: { id: userId },
+        select: {
+            id: true,
+            email: true,
+            username: true,
+            display_name: true,
+            avatar_url: true,
+            is_active: true,
+            is_banned: true,
+            ban_reason: true,
+            deleted_at: true,
+            email_verified_at: true,
+        },
+    }));
+    if (!user || user.deleted_at) {
+        throw new errors_1.NotFoundError('User tidak ditemukan.');
+    }
+    if (user.is_banned) {
+        throw new errors_1.AccountBannedError(user.ban_reason ?? undefined);
+    }
+    if (!user.is_active) {
+        throw new errors_1.AccountInactiveError();
+    }
+    // Ambil session aktif untuk mendapatkan appId dan detail device
+    const session = (await prisma_1.default.sessions.findUnique({
+        where: { id: sessionId },
+        select: {
+            id: true,
+            user_id: true,
+            app_id: true,
+            status: true,
+            device_name: true,
+            device_type: true,
+            ip_address: true,
+            expires_at: true,
+            created_at: true,
+            last_active_at: true,
+        },
+    }));
+    if (!session || session.status !== constants_1.SESSION_STATUS.ACTIVE) {
+        throw new errors_1.UnauthorizedError('Session sudah tidak aktif. Silakan login ulang.');
+    }
+    if (new Date() > session.expires_at) {
+        throw new errors_1.UnauthorizedError('Session sudah expired. Silakan login ulang.');
+    }
+    // Load roles & permissions berdasarkan appId dari session
+    const { roles, permissions } = await loadUserRolesAndPermissions(userId, session.app_id);
+    // Update last_active_at (fire-and-forget)
+    void prisma_1.default.sessions
+        .update({
+        where: { id: sessionId },
+        data: { last_active_at: new Date() },
+    })
+        .catch(() => undefined);
+    log.info({ userId, sessionId }, 'Get me');
+    return {
+        user: {
+            id: user.id,
+            email: user.email,
+            username: user.username,
+            displayName: user.display_name,
+            avatarUrl: user.avatar_url,
+            emailVerified: !!user.email_verified_at,
+            roles,
+            permissions,
+        },
+        session: {
+            id: session.id,
+            deviceName: session.device_name,
+            deviceType: session.device_type,
+            ipAddress: session.ip_address,
+            createdAt: session.created_at,
+            lastActiveAt: session.last_active_at,
         },
     };
 }

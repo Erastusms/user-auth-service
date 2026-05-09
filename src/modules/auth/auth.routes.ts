@@ -12,6 +12,7 @@ import {
 import {
   registerHandler,
   loginHandler,
+  meHandler,
   logoutHandler,
   refreshHandler,
   revokeAllHandler,
@@ -50,6 +51,12 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     },
     preHandler: [validate({ body: LoginSchema })],
     handler: loginHandler,
+  });
+
+  // ── GET /auth/me ──────────────────────────────────────────────
+  app.get('/me', {
+    preHandler: [authenticate],
+    handler: meHandler,
   });
 
   // ── POST /auth/logout ─────────────────────────────────────
