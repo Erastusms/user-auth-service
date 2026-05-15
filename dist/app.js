@@ -18,6 +18,7 @@ const health_routes_1 = require("./modules/health/health.routes");
 const auth_routes_1 = require("./modules/auth/auth.routes");
 const oauth_routes_1 = require("./modules/oauth/oauth.routes");
 const email_routes_1 = require("./modules/email/email.routes");
+const apps_routes_1 = require("./modules/apps/apps.routes");
 // ── App Factory ───────────────────────────────────────────────
 // Menggunakan factory pattern agar mudah di-test (buat instance baru per test).
 async function buildApp() {
@@ -81,6 +82,8 @@ async function buildApp() {
         await v1App.register(oauth_routes_1.oauthRoutes, { prefix: '/auth/oauth' });
         // Email & Password routes — Phase 4
         await v1App.register(email_routes_1.emailRoutes, { prefix: '/auth' });
+        // App registration routes
+        await v1App.register(apps_routes_1.appsRoutes, { prefix: '/apps' });
         // User routes — akan ditambahkan di Phase 7
         // await v1App.register(userRoutes, { prefix: '/users' });
         // App management routes — akan ditambahkan di Phase 8
@@ -92,7 +95,7 @@ async function buildApp() {
     }, { prefix: `/${env_1.env.API_VERSION}` });
     // ── Ready Log ─────────────────────────────────────────────────
     app.addHook('onReady', () => {
-        console.log(app.printRoutes());
+        // console.log(app.printRoutes());
         logger_1.default.info({
             env: env_1.env.NODE_ENV,
             version: env_1.env.API_VERSION,

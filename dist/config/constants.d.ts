@@ -108,4 +108,5 @@ export declare const AUDIT_ACTIONS: {
     readonly ROLE_ASSIGNED: "role.assigned";
     readonly ROLE_REVOKED: "role.revoked";
     readonly SESSION_REVOKED: "session.revoked";
+    readonly APP_REGISTERED: "app.registered";
 };

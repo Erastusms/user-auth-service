@@ -14,6 +14,7 @@ import { healthRoutes } from '@/modules/health/health.routes';
 import { authRoutes } from '@/modules/auth/auth.routes';
 import { oauthRoutes } from '@/modules/oauth/oauth.routes';
 import { emailRoutes } from '@/modules/email/email.routes';
+import { appsRoutes } from '@/modules/apps/apps.routes';
 
 // ── App Factory ───────────────────────────────────────────────
 // Menggunakan factory pattern agar mudah di-test (buat instance baru per test).
@@ -96,6 +97,9 @@ export async function buildApp(): Promise<FastifyInstance> {
 
       // Email & Password routes — Phase 4
       await v1App.register(emailRoutes, { prefix: '/auth' });
+
+      // App registration routes
+      await v1App.register(appsRoutes, { prefix: '/apps' });
 
       // User routes — akan ditambahkan di Phase 7
       // await v1App.register(userRoutes, { prefix: '/users' });

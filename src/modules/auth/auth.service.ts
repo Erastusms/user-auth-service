@@ -800,7 +800,9 @@ export async function getMe(
   } | null;
 
   if (!session || session.status !== SESSION_STATUS.ACTIVE) {
-    throw new UnauthorizedError('Session sudah tidak aktif. Silakan login ulang.');
+    throw new UnauthorizedError(
+      'Session sudah tidak aktif. Silakan login ulang.',
+    );
   }
 
   if (new Date() > session.expires_at) {

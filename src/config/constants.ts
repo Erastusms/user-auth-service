@@ -142,4 +142,6 @@ export const AUDIT_ACTIONS = {
   ROLE_ASSIGNED: 'role.assigned',
   ROLE_REVOKED: 'role.revoked',
   SESSION_REVOKED: 'session.revoked',
+  // App management
+  APP_REGISTERED: 'app.registered',
 } as const;
